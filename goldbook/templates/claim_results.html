@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ creator.name }} · 观点判定{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div><p class="eyebrow">逐条观点复盘</p><h1>{{ creator.name }}</h1><p class="muted">每个结论都列出原始预测、目标点位、观察窗口和程序判定依据。</p></div>
+  <a class="secondary-button" href="{{ url_for('creator_detail', uid=creator.uid) }}">返回 UP 主合订本</a>
+</div>
+<nav class="verdict-tabs" aria-label="观点结论筛选">
+  {% for value, label, count in [('all','全部',metrics.total_claim_count),('hit','命中',metrics.verdict_counts.hit),('partial_near','接近',metrics.verdict_counts.partial_near),('miss','未命中',metrics.verdict_counts.miss),('unresolved','未决',metrics.verdict_counts.unresolved)] %}
+  <a class="verdict-tab verdict-{{ value }} {% if selected_verdict == value %}is-active{% endif %}" href="{{ url_for('creator_claim_results', uid=creator.uid, verdict=value, kind=selected_kind) }}"><span>{{ label }}</span><strong>{{ count }}</strong></a>
+  {% endfor %}
+</nav>
+<nav class="verdict-tabs" aria-label="观点类型筛选">
+  {% for value, label in [('all','全部类型'),('trend','主要趋势'),('price_level','目标点位')] %}
+  <a class="verdict-tab {% if selected_kind == value %}is-active{% endif %}" href="{{ url_for('creator_claim_results', uid=creator.uid, verdict=selected_verdict, kind=value) }}"><span>{{ label }}</span></a>
+  {% endfor %}
+</nav>
+<section class="results-section">
+  <div class="section-heading"><h2>{{ verdict_label(selected_verdict) if selected_verdict != 'all' else '全部' }}观点</h2><span>{{ rows|length }} 条</span></div>
+  <div class="claim-result-list">
+    {% for row in rows %}{% set claim=row.claim %}{% set evaluation=row.evaluation %}
+    <article class="claim-result-card verdict-border-{{ evaluation.verdict.value }}">
+      <div class="claim-result-topline"><span class="verdict-badge verdict-badge-{{ evaluation.verdict.value }}">{{ verdict_label(evaluation.verdict) }}</span><time>{{ row.video.published_at.strftime('%Y-%m-%d') }}</time><span>{{ row.kind_label }}</span></div>
+      <h3><a href="{{ url_for('video_detail', uid=creator.uid, bvid=row.video.bvid) }}">{{ row.video.title }}</a></h3>
+      <p class="claim-original">{{ claim.condition_text }}</p>
+      <p class="verdict-reason"><strong>为什么：</strong>{{ row.explanation }}</p>
+      <ol class="decision-chain"><li><span>预测要求</span><p>{{ row.decision_steps.requirement }}</p></li><li><span>使用行情</span><p>{{ row.decision_steps.market_data }}</p></li><li><span>阈值比较</span><p>{{ row.decision_steps.comparison }}</p></li><li><span>最终结论</span><p>{{ row.decision_steps.conclusion }}</p></li></ol>
+      <dl class="claim-facts">
+        <div><dt>目标点位</dt><dd>{{ row.levels }}</dd></div><div><dt>M3 期限</dt><dd>{{ format_claim_horizon(claim) }}</dd></div>
+        <div><dt>观察窗口</dt><dd>{{ evaluation.window_start or '—' }} 至 {{ evaluation.window_end or '—' }}</dd></div><div><dt>实际区间</dt><dd>{{ '%.2f'|format(evaluation.observed_min) if evaluation.observed_min is not none else '—' }} – {{ '%.2f'|format(evaluation.observed_max) if evaluation.observed_max is not none else '—' }}</dd></div>
+      </dl>
+      <a class="text-link" href="{{ url_for('video_detail', uid=creator.uid, bvid=row.video.bvid) }}#claim-{{ claim.claim_index }}">查看完整证据与价格图 →</a>
+    </article>
+    {% else %}<div class="empty-state"><h3>当前筛选没有观点</h3><p>切换上方结论标签查看其他结果。</p></div>{% endfor %}
+  </div>
+</section>
+{% endblock %}

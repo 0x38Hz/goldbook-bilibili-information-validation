@@ -1,0 +1,1 @@
+"""Goldbook local research application."""

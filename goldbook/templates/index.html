@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}本地任务面板 · Goldbook{% endblock %}
+{% block content %}
+<section>
+  <h1>本地研究面板</h1>
+  <p>可输入数字 UID、UP 主页、BV 号或公开 BV 链接；发现与处理任务会在本地后台队列中运行。</p>
+  <form id="creator-form" data-csrf="{{ csrf_token }}" method="post" action="{{ url_for('create_creator_form') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="source">UID、UP 主页或 BV</label>
+    <input id="source" name="source" type="text" required placeholder="42、https://space.bilibili.com/42、BV... 或公开视频链接">
+    <button type="submit">加入研究队列</button>
+    <output id="creator-result" aria-live="polite"></output>
+  </form>
+</section>
+<section>
+  <h2>已添加的 UP 主</h2>
+  <table>
+    <thead><tr><th>UP 主</th><th>视频数</th><th>趋势已提取</th><th>已可核验</th><th>严格收益样本</th><th>5 日平均</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for row in creators %}
+      <tr><td><a href="{{ url_for('creator_detail', uid=row.creator.uid) }}">{{ row.creator.name }}</a></td>
+        <td>{{ row.video_count }}</td><td>{{ row.trend_count }}</td><td>{{ row.claim_metrics.scoreable_count }}</td><td>{{ row.metrics.mature_count }}</td><td>{{ format_percent(row.metrics.average_signed_return_5d) }}</td>
+        <td>{% if not row.creator.enabled %}<span class="warning">已停用</span>{% elif row.metrics.eligible_for_rank %}可参与排名{% else %}<span class="warning">样本不足</span>{% endif %}</td>
+        <td><form class="sync-creator inline" data-uid="{{ row.creator.uid }}" data-csrf="{{ csrf_token }}" method="post" action="{{ url_for('sync_creator_form', uid=row.creator.uid) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">重新发现</button></form><form class="inline" method="post" action="{{ url_for('set_creator_enabled_form', uid=row.creator.uid) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="enabled" value="{{ 0 if row.creator.enabled else 1 }}"><button type="submit">{{ '停用' if row.creator.enabled else '启用' }}</button></form><form class="inline delete-creator" method="post" action="{{ url_for('delete_creator_form', uid=row.creator.uid) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>确认 UID <input name="confirm_uid" required></label><button type="submit">删除</button></form></td></tr>
+    {% else %}<tr><td colspan="8">尚未添加 UP 主。</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+<section>
+  <h2>任务状态与错误摘要</h2>
+  <table id="jobs-table"><thead><tr><th>类型</th><th>状态</th><th>阶段</th><th>进度</th><th>错误摘要</th><th>控制</th></tr></thead>
+  <tbody>{% for job in jobs %}<tr><td>{{ job.kind }}</td><td>{{ job.status }}</td><td>{{ job.stage }}</td><td>{{ "%.0f"|format(job.progress * 100) }}%</td><td>{{ job.error or "—" }}</td><td>{% if job.status in ['failed','cancelled','paused'] %}<form class="inline" method="post" action="{{ url_for('control_job_form', job_id=job.id, action='retry') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">重试</button></form>{% endif %}{% if job.status == 'running' %}<form class="inline" method="post" action="{{ url_for('control_job_form', job_id=job.id, action='pause') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">暂停</button></form>{% endif %}{% if job.status in ['pending','running','paused'] %}<form class="inline" method="post" action="{{ url_for('control_job_form', job_id=job.id, action='cancel') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">取消</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="6">暂无任务。</td></tr>{% endfor %}</tbody></table>
+</section>
+{% endblock %}

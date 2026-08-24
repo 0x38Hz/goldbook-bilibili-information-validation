@@ -1,0 +1,20 @@
+.env
+.venv/
+data/
+models/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# Downloaded audio and local model artifacts
+*.aac
+*.flac
+*.m4a
+*.mp3
+*.ogg
+*.opus
+*.wav
+*.bin
+*.onnx
+*.pt
+*.safetensors
